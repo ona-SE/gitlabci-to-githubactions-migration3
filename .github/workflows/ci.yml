@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, migrate-gitlab-ci-1767712187 ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  POETRY_VERSION: 1.8.3
+  PYTHON_VERSION: 3.10.14
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache Poetry installation
+        uses: actions/cache@v4
+        with:
+          path: ~/.local
+          key: poetry-${{ env.POETRY_VERSION }}-${{ runner.os }}
+
+      - name: Install Poetry
+        run: |
+          pip install poetry==${{ env.POETRY_VERSION }}
+          poetry config virtualenvs.in-project true
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .venv
+            ~/.cache/pip
+            ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Export requirements
+        run: poetry export -f requirements.txt --output requirements.txt --without-hashes
+
+      - name: Install dependencies
+        run: poetry install --with lint
+
+      - name: Run ruff
+        run: poetry run ruff check
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache Poetry installation
+        uses: actions/cache@v4
+        with:
+          path: ~/.local
+          key: poetry-${{ env.POETRY_VERSION }}-${{ runner.os }}
+
+      - name: Install Poetry
+        run: |
+          pip install poetry==${{ env.POETRY_VERSION }}
+          poetry config virtualenvs.in-project true
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .venv
+            ~/.cache/pip
+            ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Export requirements
+        run: poetry export -f requirements.txt --output requirements.txt --without-hashes
+
+      - name: Install dependencies
+        run: poetry install --with test
+
+      - name: Run pytest
+        run: poetry run pytest
